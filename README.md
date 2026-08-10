@@ -8,7 +8,7 @@ Built in **Go** using [Bubble Tea](https://github.com/charmbracelet/bubbletea), 
 
 ## ⚡ Features
 
-- **Embedded Kernel Driver**: Built-in driver source embedded via `//go:embed`. Install both driver and TUI seamlessly with `go install` and `linuwu-tui setup`.
+- **Embedded Kernel Driver (via Git Submodule)**: Uses `git submodule` linked to [0x7375646F/Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) embedded via `//go:embed`. You can pull upstream driver updates anytime using `git submodule update --remote` and re-compile. Install both driver and TUI seamlessly with `go install` and `linuwu-tui setup`.
 - **Live Thermal & Fan Monitoring**: Real-time CPU, GPU, and System temperature readings and fan tachometer speeds.
 - **Thermal Profiles**: One-key switching between `quiet`, `balanced`, `performance`, and `turbo`.
 - **Fan Control**: Set custom fan speeds or quick presets (`auto`, `quiet`, `balanced`, `performance`, `max`).

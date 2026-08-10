@@ -1,0 +1,3 @@
+[submodule "internal/driver/upstream"]
+	path = internal/driver/upstream
+	url = https://github.com/0x7375646F/Linuwu-Sense.git
