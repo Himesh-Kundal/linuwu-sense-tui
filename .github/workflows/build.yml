@@ -1,0 +1,31 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Verify dependencies
+        run: go mod verify
+
+      - name: Build Binary
+        run: go build -v -o linuwu-sense-tui .
+
+      - name: Test Status Subcommand
+        run: ./linuwu-sense-tui --help
