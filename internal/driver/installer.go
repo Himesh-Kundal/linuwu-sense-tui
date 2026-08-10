@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-//go:embed upstream/src/* upstream/Makefile upstream/linuwu_sense.service upstream/module_signing_readme
+//go:embed files/* files/src/*
 var driverFiles embed.FS
 
 func Install() error {
@@ -19,11 +19,11 @@ func Install() error {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	err = fs.WalkDir(driverFiles, "upstream", func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(driverFiles, "files", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		relPath, _ := filepath.Rel("upstream", path)
+		relPath, _ := filepath.Rel("files", path)
 		targetPath := filepath.Join(tmpDir, relPath)
 
 		if d.IsDir() {
