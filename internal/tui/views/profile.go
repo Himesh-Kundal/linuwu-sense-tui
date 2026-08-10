@@ -25,10 +25,10 @@ func RenderProfile(caps hardware.Capabilities) string {
 	)
 
 	presets := fmt.Sprintf(
-		"[1] %s   (Quiet / low noise)\n"+
-			"[2] %s (Standard daily driving)\n"+
-			"[3] %s (High performance)\n"+
-			"[4] %s   (Maximum power & fan speeds)",
+		"[A] %s   (Quiet / low noise)\n"+
+			"[B] %s (Standard daily driving)\n"+
+			"[C] %s (High performance)\n"+
+			"[D] %s   (Maximum power & fan speeds)",
 		style.StyleValue.Render("quiet"),
 		style.StyleValue.Render("balanced"),
 		style.StyleValue.Render("performance"),
@@ -37,7 +37,7 @@ func RenderProfile(caps hardware.Capabilities) string {
 
 	presetBox := style.MakeBox("Switch Thermal Profile", presets)
 
-	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render("Press [1], [2], [3], or [4] to switch thermal profile.")
+	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render("Press [A] Quiet, [B] Balanced, [C] Performance, [D] Turbo to switch profile.")
 
 	return lipgloss.JoinVertical(lipgloss.Left, currentBox, presetBox, "\n", hints)
 }

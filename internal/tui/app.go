@@ -72,39 +72,41 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ActiveTab = 4
 
 		case "1":
-			if m.ActiveTab == 2 {
-				m.toggleBattery("battery_limiter")
-			} else if m.ActiveTab == 4 {
-				hardware.SetPlatformProfile("quiet")
-			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 3 {
-				m.ActiveTab = 0
-			}
+			m.ActiveTab = 0
 		case "2":
-			if m.ActiveTab == 2 {
-				m.toggleBattery("battery_calibration")
-			} else if m.ActiveTab == 4 {
-				hardware.SetPlatformProfile("balanced")
-			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 3 {
-				m.ActiveTab = 1
-			}
+			m.ActiveTab = 1
 		case "3":
-			if m.ActiveTab == 2 {
-				m.cycleUSBCharging()
-			} else if m.ActiveTab == 4 {
-				hardware.SetPlatformProfile("performance")
-			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 3 {
-				m.ActiveTab = 2
-			}
+			m.ActiveTab = 2
 		case "4":
-			if m.ActiveTab == 4 {
-				hardware.SetPlatformProfile("turbo")
-			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 2 {
-				m.ActiveTab = 3
-			}
+			m.ActiveTab = 3
 		case "5":
 			m.ActiveTab = 4
 
-		// Fan tab controls
+		case "a", "A":
+			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
+				m.Fans.CPUSpeed, m.Fans.GPUSpeed = 0, 0
+				hardware.SetFanSpeed(m.Caps, 0, 0)
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("quiet")
+			}
+		case "b", "B":
+			if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
+				m.updateKBParam(2, 101)
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("balanced")
+			}
+		case "c", "C":
+			if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("performance")
+			}
+		case "d", "D":
+			if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
+				m.updateKBParam(3, 2)
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("turbo")
+			}
+
+		// Fan & Keyboard controls
 		case "up":
 			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
 				m.Fans.CPUSpeed = clamp(m.Fans.CPUSpeed+5, 0, 100)
@@ -117,11 +119,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.Fans.GPUSpeed = clamp(m.Fans.GPUSpeed-5, 0, 100)
 				hardware.SetFanSpeed(m.Caps, m.Fans.CPUSpeed, m.Fans.GPUSpeed)
 			}
-		case "a", "A":
-			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
-				m.Fans.CPUSpeed, m.Fans.GPUSpeed = 0, 0
-				hardware.SetFanSpeed(m.Caps, 0, 0)
-			}
 		case "m", "M":
 			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
 				m.Fans.CPUSpeed, m.Fans.GPUSpeed = 100, 100
@@ -132,14 +129,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "s", "S":
 			if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
 				m.updateKBParam(1, 10)
-			}
-		case "b", "B":
-			if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
-				m.updateKBParam(2, 101)
-			}
-		case "d", "D":
-			if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
-				m.updateKBParam(3, 2)
 			}
 		}
 	}
