@@ -18,7 +18,7 @@ import (
 const numTabs = 5
 
 var tabNames = [numTabs]string{"Dashboard", "Fans", "Power", "Keyboard", "Profiles"}
-var tabIcons = [numTabs]string{"󰊠", "", "󱊣", "󰌌", ""}
+var tabIcons = [numTabs]string{"◈", "⌬", "⚡", "⌨", "◎"}
 
 // ── Model ────────────────────────────────────────────────────────────────────
 
