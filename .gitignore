@@ -41,3 +41,8 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Local build artifacts
+linuwu-sense-tui
+image.png
+*.png.bak
