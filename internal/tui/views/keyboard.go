@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/Himesh-Kundal/linuwu-tui/internal/hardware"
-	"github.com/Himesh-Kundal/linuwu-tui/internal/sysfs"
-	"github.com/Himesh-Kundal/linuwu-tui/internal/tui/style"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/hardware"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/sysfs"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/tui/style"
 	"github.com/charmbracelet/lipgloss"
 )
 

@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Himesh-Kundal/linuwu-tui/internal/hardware"
-	"github.com/Himesh-Kundal/linuwu-tui/internal/sysfs"
-	"github.com/Himesh-Kundal/linuwu-tui/internal/tui/style"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/hardware"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/sysfs"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/tui/style"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -15,7 +15,7 @@ func RenderDashboard(caps hardware.Capabilities, sensors hardware.SensorData) st
 		return lipgloss.NewStyle().
 			Foreground(style.ColorDanger).
 			Bold(true).
-			Render("⚠️  ERROR: linuwu_sense kernel module is not loaded!\nRun 'linuwu-tui setup' or 'sudo modprobe linuwu_sense' to start.")
+			Render("⚠️  ERROR: linuwu_sense kernel module is not loaded!\nRun 'linuwu-sense-tui setup' or 'sudo modprobe linuwu_sense' to start.")
 	}
 
 	// 1. Overview Box

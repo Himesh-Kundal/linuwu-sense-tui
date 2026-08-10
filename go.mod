@@ -1,4 +1,4 @@
-module github.com/Himesh-Kundal/linuwu-tui
+module github.com/Himesh-Kundal/linuwu-sense-tui
 
 go 1.26.5
 

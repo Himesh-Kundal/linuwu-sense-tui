@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Himesh-Kundal/linuwu-tui/internal/driver"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/driver"
 	"github.com/spf13/cobra"
 )
 

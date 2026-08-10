@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/Himesh-Kundal/linuwu-tui/internal/hardware"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/hardware"
 	"github.com/spf13/cobra"
 )
 

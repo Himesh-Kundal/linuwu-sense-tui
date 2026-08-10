@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Himesh-Kundal/linuwu-tui/internal/tui"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/tui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "linuwu-tui",
+	Use:   "linuwu-sense-tui",
 	Short: "Terminal UI and control utility for Acer Predator/Nitro Linuwu-Sense driver",
 	Run: func(cmd *cobra.Command, args []string) {
 		p := tea.NewProgram(tui.NewModel(), tea.WithAltScreen())

@@ -1,4 +1,4 @@
-# 🐾 linuwu-tui
+# 🐾 linuwu-sense-tui
 
 A modern, fast, and standalone Terminal UI (TUI) and control utility for Acer Predator & Nitro laptops using the [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) Linux kernel module.
 
@@ -8,7 +8,7 @@ Built in **Go** using [Bubble Tea](https://github.com/charmbracelet/bubbletea), 
 
 ## ⚡ Features
 
-- **Embedded Kernel Driver (via Git Submodule)**: Uses `git submodule` linked to [0x7375646F/Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) embedded via `//go:embed`. You can pull upstream driver updates anytime using `git submodule update --remote` and re-compile. Install both driver and TUI seamlessly with `go install` and `linuwu-tui setup`.
+- **Embedded Kernel Driver (via Git Submodule)**: Uses `git submodule` linked to [0x7375646F/Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) embedded via `//go:embed`. You can pull upstream driver updates anytime using `git submodule update --remote` and re-compile. Install both driver and TUI seamlessly with `go install` and `linuwu-sense-tui setup`.
 - **Live Thermal & Fan Monitoring**: Real-time CPU, GPU, and System temperature readings and fan tachometer speeds.
 - **Thermal Profiles**: One-key switching between `quiet`, `balanced`, `performance`, and `turbo`.
 - **Fan Control**: Set custom fan speeds or quick presets (`auto`, `quiet`, `balanced`, `performance`, `max`).
@@ -22,7 +22,7 @@ Built in **Go** using [Bubble Tea](https://github.com/charmbracelet/bubbletea), 
 ### 1. Installation via Go
 
 ```bash
-go install github.com/Himesh-Kundal/linuwu-tui@latest
+go install github.com/Himesh-Kundal/linuwu-sense-tui@latest
 ```
 
 ### 2. Driver Setup
@@ -30,27 +30,27 @@ go install github.com/Himesh-Kundal/linuwu-tui@latest
 If you haven't loaded/installed the `linuwu_sense` kernel module yet, run the embedded setup command:
 
 ```bash
-linuwu-tui setup
+linuwu-sense-tui setup
 ```
 
 ### 3. Launch TUI
 
 ```bash
-linuwu-tui
+linuwu-sense-tui
 ```
 
 ---
 
 ## 💻 Command Line Usage
 
-`linuwu-tui` also supports headless/scripting commands:
+`linuwu-sense-tui` also supports headless/scripting commands:
 
 ```bash
 # Print one-shot hardware status dump
-linuwu-tui status
+linuwu-sense-tui status
 
 # Extract and build kernel module
-linuwu-tui setup
+linuwu-sense-tui setup
 ```
 
 ## 🙏 Credits & Acknowledgements

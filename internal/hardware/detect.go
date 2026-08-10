@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Himesh-Kundal/linuwu-tui/internal/sysfs"
+	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/sysfs"
 )
 
 const BaseSysfs = "/sys/module/linuwu_sense/drivers/platform:acer-wmi/acer-wmi"
