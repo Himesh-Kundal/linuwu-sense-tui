@@ -58,12 +58,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		case "tab":
 			m.ActiveTab = (m.ActiveTab + 1) % 5
+		case "shift+tab":
+			m.ActiveTab = (m.ActiveTab + 4) % 5
+		case "f1":
+			m.ActiveTab = 0
+		case "f2":
+			m.ActiveTab = 1
+		case "f3":
+			m.ActiveTab = 2
+		case "f4":
+			m.ActiveTab = 3
+		case "f5":
+			m.ActiveTab = 4
+
 		case "1":
 			if m.ActiveTab == 2 {
 				m.toggleBattery("battery_limiter")
 			} else if m.ActiveTab == 4 {
 				hardware.SetPlatformProfile("quiet")
-			} else {
+			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 3 {
 				m.ActiveTab = 0
 			}
 		case "2":
@@ -71,7 +84,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.toggleBattery("battery_calibration")
 			} else if m.ActiveTab == 4 {
 				hardware.SetPlatformProfile("balanced")
-			} else {
+			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 3 {
 				m.ActiveTab = 1
 			}
 		case "3":
@@ -79,13 +92,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cycleUSBCharging()
 			} else if m.ActiveTab == 4 {
 				hardware.SetPlatformProfile("performance")
-			} else {
+			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 3 {
 				m.ActiveTab = 2
 			}
 		case "4":
 			if m.ActiveTab == 4 {
 				hardware.SetPlatformProfile("turbo")
-			} else {
+			} else if m.ActiveTab == 0 || m.ActiveTab == 1 || m.ActiveTab == 2 {
 				m.ActiveTab = 3
 			}
 		case "5":
@@ -234,7 +247,7 @@ func (m Model) View() string {
 		body = views.RenderProfile(m.Caps)
 	}
 
-	footer := style.StyleStatusKey.Render("\n[Tab]: Switch View | [q]: Quit")
+	footer := style.StyleStatusKey.Render("\n[Tab / F1-F5]: Switch View | [q]: Quit")
 
 	return lipgloss.JoinVertical(lipgloss.Left, header, tabBar, "\n", body, footer)
 }
