@@ -29,8 +29,23 @@ func RenderBattery(caps hardware.Capabilities) string {
 		lines = append(lines, fmt.Sprintf("[3] USB Charge Cutoff:         [%d%%]\n    Allows charging devices when powered off until threshold.", val))
 	}
 
-	box := style.MakeBox("Power & Battery Management", strings.Join(lines, "\n\n"))
+	if caps.HasBacklightTimeout {
+		val, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "backlight_timeout"))
+		lines = append(lines, fmt.Sprintf("[4] Backlight Timeout (30s):   %s\n    Turns off keyboard backlight after 30 seconds idle.", renderToggle(val == 1)))
+	}
 
-	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render("Press [1], [2], or [3] to toggle/cycle settings.")
+	if caps.HasLCDOverride {
+		val, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "lcd_override"))
+		lines = append(lines, fmt.Sprintf("[5] LCD Override:              %s\n    Reduces LCD latency and ghosting.", renderToggle(val == 1)))
+	}
+
+	if caps.HasBootAnimationSound {
+		val, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "boot_animation_sound"))
+		lines = append(lines, fmt.Sprintf("[6] Boot Animation Sound:      %s\n    Enables/disables Predator boot animation sound effect.", renderToggle(val == 1)))
+	}
+
+	box := style.MakeBox("Power & Display Features", strings.Join(lines, "\n\n"))
+
+	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render("Press [1]-[6] to toggle/cycle settings, or click any option with your mouse.")
 	return lipgloss.JoinVertical(lipgloss.Left, box, "\n", hints)
 }

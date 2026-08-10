@@ -52,6 +52,53 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.Sensors = hardware.ReadSensors(m.Caps)
 		return m, tickCmd()
 
+	case tea.MouseMsg:
+		if msg.Type == tea.MouseLeft {
+			// Tab bar is rendered on line 2 (Y == 1 or 2)
+			if msg.Y >= 1 && msg.Y <= 3 {
+				if msg.X >= 0 && msg.X < 15 {
+					m.ActiveTab = 0
+				} else if msg.X >= 15 && msg.X < 26 {
+					m.ActiveTab = 1
+				} else if msg.X >= 26 && msg.X < 39 {
+					m.ActiveTab = 2
+				} else if msg.X >= 39 && msg.X < 53 {
+					m.ActiveTab = 3
+				} else if msg.X >= 53 {
+					m.ActiveTab = 4
+				}
+			} else if msg.Y > 3 {
+				// Click inside views
+				if m.ActiveTab == 2 { // Power & Display tab options
+					relLine := msg.Y - 5
+					if relLine >= 0 && relLine <= 2 {
+						m.toggleBattery("battery_limiter")
+					} else if relLine >= 3 && relLine <= 5 {
+						m.toggleBattery("battery_calibration")
+					} else if relLine >= 6 && relLine <= 8 {
+						m.cycleUSBCharging()
+					} else if relLine >= 9 && relLine <= 11 {
+						m.toggleBattery("backlight_timeout")
+					} else if relLine >= 12 && relLine <= 14 {
+						m.toggleBattery("lcd_override")
+					} else if relLine >= 15 {
+						m.toggleBattery("boot_animation_sound")
+					}
+				} else if m.ActiveTab == 4 { // Profiles tab presets
+					relLine := msg.Y - 12
+					if relLine >= 0 && relLine <= 1 {
+						hardware.SetPlatformProfile("quiet")
+					} else if relLine == 2 {
+						hardware.SetPlatformProfile("balanced")
+					} else if relLine == 3 {
+						hardware.SetPlatformProfile("performance")
+					} else if relLine >= 4 {
+						hardware.SetPlatformProfile("turbo")
+					}
+				}
+			}
+		}
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q", "ctrl+c":
@@ -72,15 +119,39 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ActiveTab = 4
 
 		case "1":
-			m.ActiveTab = 0
+			if m.ActiveTab == 2 && m.Caps.HasBatteryLimiter {
+				m.toggleBattery("battery_limiter")
+			} else {
+				m.ActiveTab = 0
+			}
 		case "2":
-			m.ActiveTab = 1
+			if m.ActiveTab == 2 && m.Caps.HasBatteryCalibration {
+				m.toggleBattery("battery_calibration")
+			} else {
+				m.ActiveTab = 1
+			}
 		case "3":
-			m.ActiveTab = 2
+			if m.ActiveTab == 2 && m.Caps.HasUSBCharging {
+				m.cycleUSBCharging()
+			} else {
+				m.ActiveTab = 2
+			}
 		case "4":
-			m.ActiveTab = 3
+			if m.ActiveTab == 2 && m.Caps.HasBacklightTimeout {
+				m.toggleBattery("backlight_timeout")
+			} else {
+				m.ActiveTab = 3
+			}
 		case "5":
-			m.ActiveTab = 4
+			if m.ActiveTab == 2 && m.Caps.HasLCDOverride {
+				m.toggleBattery("lcd_override")
+			} else {
+				m.ActiveTab = 4
+			}
+		case "6":
+			if m.ActiveTab == 2 && m.Caps.HasBootAnimationSound {
+				m.toggleBattery("boot_animation_sound")
+			}
 
 		case "a", "A":
 			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {

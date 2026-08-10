@@ -13,7 +13,7 @@ var rootCmd = &cobra.Command{
 	Use:   "linuwu-sense-tui",
 	Short: "Terminal UI and control utility for Acer Predator/Nitro Linuwu-Sense driver",
 	Run: func(cmd *cobra.Command, args []string) {
-		p := tea.NewProgram(tui.NewModel(), tea.WithAltScreen())
+		p := tea.NewProgram(tui.NewModel(), tea.WithAltScreen(), tea.WithMouseCellMotion())
 		if _, err := p.Run(); err != nil {
 			fmt.Printf("Error running TUI: %v\n", err)
 			os.Exit(1)
