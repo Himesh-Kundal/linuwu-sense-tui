@@ -155,7 +155,11 @@ func (m *Model) maxCursor() int {
 	case 3: // Keyboard
 		return 4 // mode, speed, brightness, direction
 	case 4: // Profiles
-		return 4 // quiet, balanced, performance, turbo
+		choices, err := hardware.GetPlatformProfileChoices()
+		if err != nil || len(choices) == 0 {
+			return 1
+		}
+		return len(choices)
 	default:
 		return 1
 	}
@@ -195,9 +199,11 @@ func (m *Model) activate() {
 	case 3: // Keyboard
 		m.activateKeyboard()
 	case 4: // Profiles
-		profiles := []string{"quiet", "balanced", "performance", "turbo"}
-		if m.Cursor < len(profiles) && m.Caps.HasPlatformProfile {
-			hardware.SetPlatformProfile(profiles[m.Cursor])
+		if m.Caps.HasPlatformProfile {
+			choices, err := hardware.GetPlatformProfileChoices()
+			if err == nil && m.Cursor < len(choices) {
+				hardware.SetPlatformProfile(choices[m.Cursor])
+			}
 		}
 	}
 }

@@ -9,17 +9,14 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type profileEntry struct {
-	name  string
-	label string
-	desc  string
-}
-
-var profiles = []profileEntry{
-	{"quiet", "Quiet", "Minimum fan noise. Throttles CPU/GPU for silent operation."},
-	{"balanced", "Balanced", "Standard daily-use profile. Balanced power and noise."},
-	{"performance", "Performance", "High performance. Fans ramp up as needed."},
-	{"turbo", "Turbo", "Maximum CPU/GPU boost. Fans at high speed."},
+// profileDesc gives a human description for known ACPI profile names.
+var profileDesc = map[string]string{
+	"quiet":           "Minimum fan noise, throttles CPU/GPU for silent operation.",
+	"low-power":       "Low power mode, throttles CPU/GPU for silent operation.",
+	"balanced":        "Standard daily-use. Balanced power and noise.",
+	"performance":     "High performance. Fans ramp up as needed.",
+	"balanced-performance": "High performance with balanced fan curve.",
+	"turbo":           "Maximum CPU/GPU boost. Fans at high speed.",
 }
 
 func RenderProfile(caps hardware.Capabilities, cursor int) string {
@@ -30,38 +27,54 @@ func RenderProfile(caps hardware.Capabilities, cursor int) string {
 	current, _ := hardware.GetPlatformProfile()
 	choices, _ := hardware.GetPlatformProfileChoices()
 
+	if len(choices) == 0 {
+		return style.StyleWarning.Render("  ⚠  No platform profiles found on this system.")
+	}
+
 	// ── Current indicator ──
 	currentLine := style.StyleLabel.Render("Active Profile") + "  " +
 		lipgloss.NewStyle().Bold(true).Foreground(style.ColorPrimary).Render(strings.ToUpper(current))
-	supportedLine := style.StyleMuted.Render("Supported:  " + strings.Join(choices, "  ·  "))
+	supportedLine := style.StyleMuted.Render("Available:  " + strings.Join(choices, "  ·  "))
 
 	infoPanel := style.Section("  Thermal Profile", currentLine+"\n"+supportedLine)
 
-	// ── Profile list ──
+	// Clamp cursor to actual choices length
+	if cursor >= len(choices) {
+		cursor = len(choices) - 1
+	}
+
+	// ── Profile list from actual system choices ──
 	var lines []string
-	for i, p := range profiles {
-		isActive := p.name == current
+	for i, name := range choices {
+		isActive := name == current
 		isCursor := i == cursor
 
-		nameStr := "  " + p.label
+		desc, ok := profileDesc[name]
+		if !ok {
+			desc = fmt.Sprintf("Apply '%s' thermal profile.", name)
+		}
+
+		label := name
 		if isActive {
-			nameStr = "✓ " + p.label
+			label = "✓ " + name
+		} else {
+			label = "  " + name
 		}
 
 		if isCursor {
-			row := style.StyleRowSelected.Render(fmt.Sprintf("▶ %-14s", p.label))
-			hint := style.StyleRowHint.Render("  └─ " + p.desc)
+			row := style.StyleRowSelected.Render(fmt.Sprintf("▶ %-22s", name))
+			hint := style.StyleRowHint.Render("  └─ " + desc)
 			lines = append(lines, row, hint, "")
 		} else {
-			var labelStyle lipgloss.Style
+			var nameStyle lipgloss.Style
 			if isActive {
-				labelStyle = lipgloss.NewStyle().Bold(true).Foreground(style.ColorGreen)
+				nameStyle = lipgloss.NewStyle().Bold(true).Foreground(style.ColorGreen)
 			} else {
-				labelStyle = lipgloss.NewStyle().Foreground(style.ColorFg)
+				nameStyle = lipgloss.NewStyle().Foreground(style.ColorFg)
 			}
-			_ = nameStr
+			_ = label
 			lines = append(lines, style.StyleRowNormal.Render(
-				"  "+labelStyle.Render(fmt.Sprintf("%-14s", p.label))+style.StyleMuted.Render("  "+p.desc),
+				"  "+nameStyle.Render(fmt.Sprintf("%-22s", name))+style.StyleMuted.Render("  "+desc),
 			), "")
 		}
 	}

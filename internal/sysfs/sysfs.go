@@ -22,8 +22,15 @@ func ReadString(path string) (string, error) {
 }
 
 // WriteString writes a string value to a sysfs path.
+// Uses O_WRONLY so it works correctly with kernel sysfs/procfs virtual files.
 func WriteString(path string, val string) error {
-	return os.WriteFile(path, []byte(val), 0644)
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(val + "\n")
+	return err
 }
 
 // ReadInt reads an integer value from a sysfs path.
