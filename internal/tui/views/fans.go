@@ -28,39 +28,46 @@ func (m *FansModel) Init(caps hardware.Capabilities) {
 
 func RenderFans(m *FansModel, caps hardware.Capabilities, sensors hardware.SensorData) string {
 	if !caps.HasFanSpeed {
-		return lipgloss.NewStyle().Foreground(style.ColorWarning).Render("Fan speed control is not supported on this device.")
+		return style.StyleWarning.Render("  Fan speed control is not supported on this device.")
 	}
 
-	cpuBar := renderBar(m.CPUSpeed, 100, 20)
-	gpuBar := renderBar(m.GPUSpeed, 100, 20)
+	cpuLabel := modeLabel(m.CPUSpeed)
+	gpuLabel := modeLabel(m.GPUSpeed)
 
-	cpuMode := fmt.Sprintf("%d%%", m.CPUSpeed)
-	if m.CPUSpeed == 0 {
-		cpuMode = "Auto"
-	}
-	gpuMode := fmt.Sprintf("%d%%", m.GPUSpeed)
-	if m.GPUSpeed == 0 {
-		gpuMode = "Auto"
+	lines := []string{
+		fmtFan("CPU Fan", m.CPUSpeed, cpuLabel, sensors.CPUFan),
+		"",
+		fmtFan("GPU Fan", m.GPUSpeed, gpuLabel, sensors.GPUFan),
 	}
 
-	content := fmt.Sprintf(
-		"CPU Fan Setting: %s %s\nGPU Fan Setting: %s %s\n\nLive Tachometer:\nCPU: %d RPM\nGPU: %d RPM",
-		cpuBar, style.StyleValue.Render(cpuMode),
-		gpuBar, style.StyleValue.Render(gpuMode),
-		sensors.CPUFan, sensors.GPUFan,
+	panel := style.SectionFocused("  Fan Speed Control", strings.Join(lines, "\n"))
+
+	help := lipgloss.JoinHorizontal(lipgloss.Left,
+		style.KeyHint("←/→", "Speed ±5%")+"   ",
+		style.KeyHint("0", "Auto (0%)")+"   ",
+		style.KeyHint("9", "Max (100%)"),
 	)
 
-	box := style.MakeBox("Fan Speed Control", content)
-
-	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render(
-		"Controls:\n" +
-			"  [↑ / ↓]   Adjust CPU & GPU Speed (+5% / -5%)\n" +
-			"  [A]       Auto Mode (0,0)\n" +
-			"  [1]       Quiet Preset (30,30)\n" +
-			"  [2]       Balanced Preset (60,60)\n" +
-			"  [3]       Performance Preset (80,80)\n" +
-			"  [M]       Maximum Speed (100,100)",
-	)
-
-	return lipgloss.JoinVertical(lipgloss.Left, box, strings.Repeat("\n", 1), hints)
+	return lipgloss.JoinVertical(lipgloss.Left, panel, "", help)
 }
+
+func modeLabel(spd int) string {
+	if spd == 0 {
+		return "Auto"
+	}
+	return fmt.Sprintf("%d%%", spd)
+}
+
+func fmtFan(name string, speed int, label string, rpm int) string {
+	bar := MiniBar(speed, 100, 24)
+	pct := lipgloss.NewStyle().Bold(true).Foreground(style.ColorCyan).Render(fmt.Sprintf("%-8s", label))
+	live := style.StyleMuted.Render(fmt.Sprintf("  %d RPM", rpm))
+	return style.StyleLabel.Render(name) + " " + bar + " " + pct + live
+}
+
+func renderBar(val, max, width int) string {
+	return MiniBar(val, max, width)
+}
+
+// keep symbol for compat with old dashboard if needed
+var _ = strings.Repeat

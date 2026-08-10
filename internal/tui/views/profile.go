@@ -9,35 +9,65 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func RenderProfile(caps hardware.Capabilities) string {
+type profileEntry struct {
+	name  string
+	label string
+	desc  string
+}
+
+var profiles = []profileEntry{
+	{"quiet", "Quiet", "Minimum fan noise. Throttles CPU/GPU for silent operation."},
+	{"balanced", "Balanced", "Standard daily-use profile. Balanced power and noise."},
+	{"performance", "Performance", "High performance. Fans ramp up as needed."},
+	{"turbo", "Turbo", "Maximum CPU/GPU boost. Fans at high speed."},
+}
+
+func RenderProfile(caps hardware.Capabilities, cursor int) string {
 	if !caps.HasPlatformProfile {
-		return lipgloss.NewStyle().Foreground(style.ColorWarning).Render("ACPI Platform Profile is not supported on this kernel/system.")
+		return style.StyleDanger.Render("  ⚠  ACPI Platform Profile is not supported on this system.")
 	}
 
 	current, _ := hardware.GetPlatformProfile()
 	choices, _ := hardware.GetPlatformProfileChoices()
 
-	currentBox := style.MakeBox("Active Thermal Profile",
-		fmt.Sprintf("Current Profile: %s\nSupported:       %s",
-			style.StyleValue.Render(strings.ToUpper(current)),
-			strings.Join(choices, ", "),
-		),
-	)
+	// ── Current indicator ──
+	currentLine := style.StyleLabel.Render("Active Profile") + "  " +
+		lipgloss.NewStyle().Bold(true).Foreground(style.ColorPrimary).Render(strings.ToUpper(current))
+	supportedLine := style.StyleMuted.Render("Supported:  " + strings.Join(choices, "  ·  "))
 
-	presets := fmt.Sprintf(
-		"[A] %s   (Quiet / low noise)\n"+
-			"[B] %s (Standard daily driving)\n"+
-			"[C] %s (High performance)\n"+
-			"[D] %s   (Maximum power & fan speeds)",
-		style.StyleValue.Render("quiet"),
-		style.StyleValue.Render("balanced"),
-		style.StyleValue.Render("performance"),
-		style.StyleValue.Render("turbo"),
-	)
+	infoPanel := style.Section("  Thermal Profile", currentLine+"\n"+supportedLine)
 
-	presetBox := style.MakeBox("Switch Thermal Profile", presets)
+	// ── Profile list ──
+	var lines []string
+	for i, p := range profiles {
+		isActive := p.name == current
+		isCursor := i == cursor
 
-	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render("Press [A] Quiet, [B] Balanced, [C] Performance, [D] Turbo to switch profile.")
+		nameStr := "  " + p.label
+		if isActive {
+			nameStr = "✓ " + p.label
+		}
 
-	return lipgloss.JoinVertical(lipgloss.Left, currentBox, presetBox, "\n", hints)
+		if isCursor {
+			row := style.StyleRowSelected.Render(fmt.Sprintf("▶ %-14s", p.label))
+			hint := style.StyleRowHint.Render("  └─ " + p.desc)
+			lines = append(lines, row, hint, "")
+		} else {
+			var labelStyle lipgloss.Style
+			if isActive {
+				labelStyle = lipgloss.NewStyle().Bold(true).Foreground(style.ColorGreen)
+			} else {
+				labelStyle = lipgloss.NewStyle().Foreground(style.ColorFg)
+			}
+			_ = nameStr
+			lines = append(lines, style.StyleRowNormal.Render(
+				"  "+labelStyle.Render(fmt.Sprintf("%-14s", p.label))+style.StyleMuted.Render("  "+p.desc),
+			), "")
+		}
+	}
+
+	listPanel := style.SectionFocused("  Switch Profile", strings.Join(lines, "\n"))
+	help := style.KeyHint("↑/↓", "Navigate") + "   " + style.KeyHint("Enter/Space", "Apply profile")
+
+	return lipgloss.JoinVertical(lipgloss.Left, infoPanel, "", listPanel, "", help)
 }

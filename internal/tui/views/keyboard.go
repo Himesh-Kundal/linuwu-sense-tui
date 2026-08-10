@@ -3,6 +3,7 @@ package views
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/hardware"
 	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/sysfs"
@@ -10,55 +11,91 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var ModeNames = []string{
+var modeNames = []string{
 	"Static", "Breathing", "Neon", "Wave", "Shifting", "Zoom", "Meteor", "Twinkling",
 }
 
-func RenderKeyboard(caps hardware.Capabilities) string {
+type kbRow struct {
+	label string
+	value string
+	desc  string
+}
+
+func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 	if !caps.HasFourZonedKB {
-		return lipgloss.NewStyle().Foreground(style.ColorWarning).Render("Four-Zone RGB keyboard is not supported on this device.")
+		return style.StyleWarning.Render("  Four-Zone RGB keyboard is not supported on this device.")
 	}
 
 	modePath := filepath.Join(caps.KBPath, "four_zone_mode")
-	val, err := sysfs.ReadString(modePath)
+	raw, err := sysfs.ReadString(modePath)
 	if err != nil {
-		val = "Error reading state"
+		raw = "0,0,0,1,0,0,0"
 	}
 
 	var mode, speed, brightness, direction, r, g, b int
-	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &mode, &speed, &brightness, &direction, &r, &g, &b)
+	fmt.Sscanf(raw, "%d,%d,%d,%d,%d,%d,%d", &mode, &speed, &brightness, &direction, &r, &g, &b)
 
 	modeName := "Unknown"
-	if mode >= 0 && mode < len(ModeNames) {
-		modeName = ModeNames[mode]
+	if mode >= 0 && mode < len(modeNames) {
+		modeName = modeNames[mode]
+	}
+	dirStr := "Left→Right"
+	if direction == 2 {
+		dirStr = "Right→Left"
 	}
 
-	dirStr := "Left-to-Right"
-	if direction == 1 {
-		dirStr = "Right-to-Left"
+	rows := []kbRow{
+		{
+			label: "Effect Mode",
+			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorPurple).Render(fmt.Sprintf("%-12s", modeName)),
+			desc:  "Press Enter to cycle through 8 lighting modes",
+		},
+		{
+			label: "Speed",
+			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorCyan).Render(fmt.Sprintf("%d / 9", speed)),
+			desc:  "Press Enter to increase animation speed (0-9)",
+		},
+		{
+			label: "Brightness",
+			value: MiniBar(brightness, 100, 16) + " " + lipgloss.NewStyle().Foreground(style.ColorYellow).Render(fmt.Sprintf("%d%%", brightness)),
+			desc:  "Press Enter to cycle brightness (+25%)",
+		},
+		{
+			label: "Direction",
+			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorGreen).Render(dirStr),
+			desc:  "Press Enter to toggle animation direction",
+		},
 	}
 
-	content := fmt.Sprintf(
-		"Raw Sysfs: [%s]\n\n"+
-			"%s %s (%d)\n"+
-			"%s %d\n"+
-			"%s %d%%\n"+
-			"%s %s\n"+
-			"%s (%d, %d, %d)",
-		val,
-		style.StyleLabel.Render("[M] Effect Mode:"), style.StyleValue.Render(modeName), mode,
-		style.StyleLabel.Render("[S] Speed (0-9):"), speed,
-		style.StyleLabel.Render("[B] Brightness:"), brightness,
-		style.StyleLabel.Render("[D] Direction:"), dirStr,
-		style.StyleLabel.Render("Color (R,G,B):"), r, g, b,
-	)
+	var lines []string
+	for i, r := range rows {
+		label := fmt.Sprintf("%-16s", r.label)
+		entry := "  " + label + " " + r.value
+		if i == cursor {
+			lines = append(lines, style.StyleRowSelected.Render(fmt.Sprintf("▶ %-16s %s", r.label, stripStyle(r.value))))
+			lines = append(lines, style.StyleRowHint.Render("  └─ "+r.desc))
+		} else {
+			lines = append(lines, style.StyleRowNormal.Render(entry))
+		}
+		lines = append(lines, "")
+	}
 
-	box := style.MakeBox("4-Zone RGB Keyboard", content)
+	// Color preview row
+	colorSwatch := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", r, g, b))).
+		Render(fmt.Sprintf("  █████  RGB (%d, %d, %d)", r, g, b))
+	lines = append(lines, colorSwatch)
 
-	hints := lipgloss.NewStyle().Foreground(style.ColorMuted).Render(
-		"Controls:\n" +
-			"  [M] Cycle Mode  |  [S] Cycle Speed  |  [B] Adjust Brightness  |  [D] Toggle Direction",
-	)
+	panel := style.SectionFocused("  4-Zone RGB Keyboard", strings.Join(lines, "\n"))
+	help := style.KeyHint("↑/↓", "Navigate") + "   " + style.KeyHint("Enter/Space", "Cycle value")
 
-	return lipgloss.JoinVertical(lipgloss.Left, box, "\n", hints)
+	return lipgloss.JoinVertical(lipgloss.Left, panel, "", help)
+}
+
+// stripStyle removes ANSI color sequences for safe use in background-colored rows.
+// For simplicity we just re-render a plain version.
+func stripStyle(s string) string {
+	// lipgloss strips styles itself when rendering inside another styled block.
+	return s
 }

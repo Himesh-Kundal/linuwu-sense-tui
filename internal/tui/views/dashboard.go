@@ -2,6 +2,7 @@ package views
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/hardware"
@@ -12,75 +13,100 @@ import (
 
 func RenderDashboard(caps hardware.Capabilities, sensors hardware.SensorData) string {
 	if !caps.ModuleLoaded {
-		return lipgloss.NewStyle().
-			Foreground(style.ColorDanger).
-			Bold(true).
-			Render("⚠️  ERROR: linuwu_sense kernel module is not loaded!\nRun 'linuwu-sense-tui setup' or 'sudo modprobe linuwu_sense' to start.")
+		return style.StyleDanger.Render("  ⚠  linuwu_sense module is not loaded\n\n  Run: sudo modprobe linuwu_sense")
 	}
 
-	// 1. Overview Box
 	profileStr, _ := hardware.GetPlatformProfile()
 	if profileStr == "" {
 		profileStr = "N/A"
 	}
 
-	overviewContent := fmt.Sprintf(
-		"%s %s\n%s %s",
-		style.StyleLabel.Render("Model Detected:"), style.StyleValue.Render(string(caps.Model)),
-		style.StyleLabel.Render("Thermal Profile:"), style.StyleValue.Render(strings.ToUpper(profileStr)),
-	)
-	overviewBox := style.MakeBox("System Overview", overviewContent)
+	// ── System Info panel ──
+	infoLines := []string{
+		row("Laptop Model", string(caps.Model), style.ColorCyan),
+		row("Driver Type", string(caps.Model)+"Sense", style.ColorPurple),
+		row("Thermal Profile", strings.ToUpper(profileStr), style.ColorGreen),
+	}
+	infoPanel := style.Section("  System", strings.Join(infoLines, "\n"))
 
-	// 2. Sensors Box
-	cpuBar := renderBar(sensors.CPUTemp, 100, 15)
-	gpuBar := renderBar(sensors.GPUTemp, 100, 15)
+	// ── Sensors panel ──
+	sensorLines := []string{
+		rowBar("CPU Temp", sensors.CPUTemp, 100, "°C"),
+		rowBar("GPU Temp", sensors.GPUTemp, 100, "°C"),
+		rowBar("SYS Temp", sensors.SYSTemp, 100, "°C"),
+		"",
+		row("CPU Fan", fmt.Sprintf("%d RPM", sensors.CPUFan), style.ColorCyan),
+		row("GPU Fan", fmt.Sprintf("%d RPM", sensors.GPUFan), style.ColorCyan),
+	}
+	sensorsPanel := style.Section("  Live Sensors", strings.Join(sensorLines, "\n"))
 
-	sensorContent := fmt.Sprintf(
-		"CPU Temp: %s %d°C\nGPU Temp: %s %d°C\nSYS Temp: %s %d°C\n\nCPU Fan:  %s RPM\nGPU Fan:  %s RPM",
-		cpuBar, sensors.CPUTemp,
-		gpuBar, sensors.GPUTemp,
-		renderBar(sensors.SYSTemp, 100, 15), sensors.SYSTemp,
-		style.StyleValue.Render(fmt.Sprintf("%d", sensors.CPUFan)),
-		style.StyleValue.Render(fmt.Sprintf("%d", sensors.GPUFan)),
-	)
-	sensorsBox := style.MakeBox("Live Sensors", sensorContent)
-
-	// 3. Quick Status Box
+	// ── Quick status panel ──
 	var statusLines []string
 	if caps.HasBatteryLimiter {
-		val, _ := sysfs.ReadInt(caps.SensePath + "/battery_limiter")
-		statusLines = append(statusLines, fmt.Sprintf("%s %s", style.StyleLabel.Render("Battery Limiter (80%):"), renderToggle(val == 1)))
-	}
-	if caps.HasUSBCharging {
-		val, _ := sysfs.ReadInt(caps.SensePath + "/usb_charging")
-		statusLines = append(statusLines, fmt.Sprintf("%s %s", style.StyleLabel.Render("USB Charging Cutoff:"), style.StyleValue.Render(fmt.Sprintf("%d%%", val))))
+		v, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "battery_limiter"))
+		statusLines = append(statusLines, row("Battery Limiter (80%)", "", style.ColorMuted))
+		statusLines[len(statusLines)-1] = rowToggle("Battery Limiter (80%)", v == 1)
 	}
 	if caps.HasBacklightTimeout {
-		val, _ := sysfs.ReadInt(caps.SensePath + "/backlight_timeout")
-		statusLines = append(statusLines, fmt.Sprintf("%s %s", style.StyleLabel.Render("Backlight Timeout:"), renderToggle(val == 1)))
+		v, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "backlight_timeout"))
+		statusLines = append(statusLines, rowToggle("Backlight Timeout", v == 1))
 	}
 	if caps.HasLCDOverride {
-		val, _ := sysfs.ReadInt(caps.SensePath + "/lcd_override")
-		statusLines = append(statusLines, fmt.Sprintf("%s %s", style.StyleLabel.Render("LCD Override:"), renderToggle(val == 1)))
+		v, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "lcd_override"))
+		statusLines = append(statusLines, rowToggle("LCD Override", v == 1))
+	}
+	if caps.HasUSBCharging {
+		v, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "usb_charging"))
+		statusLines = append(statusLines, row("USB Charge Cutoff", fmt.Sprintf("%d%%", v), style.ColorYellow))
 	}
 	if caps.HasBootAnimationSound {
-		val, _ := sysfs.ReadInt(caps.SensePath + "/boot_animation_sound")
-		statusLines = append(statusLines, fmt.Sprintf("%s %s", style.StyleLabel.Render("Boot Sound:"), renderToggle(val == 1)))
+		v, _ := sysfs.ReadInt(filepath.Join(caps.SensePath, "boot_animation_sound"))
+		statusLines = append(statusLines, rowToggle("Boot Sound", v == 1))
+	}
+	var statusPanel string
+	if len(statusLines) > 0 {
+		statusPanel = style.Section("  Quick Status", strings.Join(statusLines, "\n"))
 	}
 
-	statusBox := style.MakeBox("Quick Status", strings.Join(statusLines, "\n"))
-
-	return lipgloss.JoinVertical(lipgloss.Left, overviewBox, sensorsBox, statusBox)
-}
-
-func renderToggle(active bool) string {
-	if active {
-		return lipgloss.NewStyle().Foreground(style.ColorSuccess).Bold(true).Render("[ON]")
+	panels := []string{infoPanel, sensorsPanel}
+	if statusPanel != "" {
+		panels = append(panels, statusPanel)
 	}
-	return lipgloss.NewStyle().Foreground(style.ColorMuted).Render("[OFF]")
+	return lipgloss.JoinVertical(lipgloss.Left, panels...)
 }
 
-func renderBar(val, max, width int) string {
+// ── Shared helpers ─────────────────────────────────────────────────────────
+
+func row(label, value string, valueColor lipgloss.Color) string {
+	l := style.StyleLabel.Render(label)
+	v := lipgloss.NewStyle().Bold(true).Foreground(valueColor).Render(value)
+	return l + " " + v
+}
+
+func rowToggle(label string, active bool) string {
+	l := style.StyleLabel.Render(label)
+	return l + " " + style.OnOff(active)
+}
+
+func rowBar(label string, val, max int, unit string) string {
+	l := style.StyleLabel.Render(label)
+	bar := MiniBar(val, max, 16)
+	v := lipgloss.NewStyle().Foreground(tempColor(val)).Render(fmt.Sprintf("%d%s", val, unit))
+	return l + " " + bar + " " + v
+}
+
+func tempColor(t int) lipgloss.Color {
+	switch {
+	case t >= 85:
+		return style.ColorRed
+	case t >= 70:
+		return style.ColorYellow
+	default:
+		return style.ColorGreen
+	}
+}
+
+func MiniBar(val, max, width int) string {
 	if val < 0 {
 		val = 0
 	}
@@ -88,17 +114,12 @@ func renderBar(val, max, width int) string {
 		val = max
 	}
 	fill := (val * width) / max
-	empty := width - fill
-
-	fillStr := strings.Repeat("█", fill)
-	emptyStr := strings.Repeat("░", empty)
-
-	color := style.ColorSuccess
-	if val > 80 {
-		color = style.ColorDanger
-	} else if val > 65 {
-		color = style.ColorWarning
+	if fill < 0 {
+		fill = 0
 	}
-
-	return lipgloss.NewStyle().Foreground(color).Render(fillStr) + lipgloss.NewStyle().Foreground(style.ColorMuted).Render(emptyStr)
+	empty := width - fill
+	color := tempColor(val)
+	filled := lipgloss.NewStyle().Foreground(color).Render(strings.Repeat("█", fill))
+	rest := lipgloss.NewStyle().Foreground(style.ColorMuted).Render(strings.Repeat("░", empty))
+	return filled + rest
 }
