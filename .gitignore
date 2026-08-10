@@ -1,0 +1,43 @@
+# Binaries for programs and modules
+*.exe
+*.exe-debug
+*.elf
+*.o
+*.a
+*.so
+*.dylib
+linuwu-tui
+
+# Kernel build artifacts (if any local driver builds happen)
+*.ko
+*.mod
+*.mod.c
+*.metadata
+.tmp_versions
+modules.order
+Module.symvers
+
+# Test binary built by `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (go build creates these, but go.mod/go.sum are checked in)
+vendor/
+
+# OS specific files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDEs & Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
