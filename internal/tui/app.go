@@ -118,29 +118,37 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "f5":
 			m.ActiveTab = 4
 
-		// Options controls (Tab 2: Battery/Power - A, B, C, D, E, F)
+		// Options controls (Tab 2: Battery/Power & Tab 4: Thermal Profiles - A, B, C, D, E, F)
 		case "a", "A":
 			if m.ActiveTab == 2 && m.Caps.HasBatteryLimiter {
 				m.toggleBattery("battery_limiter")
 			} else if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
 				m.Fans.CPUSpeed, m.Fans.GPUSpeed = 0, 0
 				hardware.SetFanSpeed(m.Caps, 0, 0)
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("quiet")
 			}
 		case "b", "B":
 			if m.ActiveTab == 2 && m.Caps.HasBatteryCalibration {
 				m.toggleBattery("battery_calibration")
 			} else if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
 				m.updateKBParam(2, 101)
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("balanced")
 			}
 		case "c", "C":
 			if m.ActiveTab == 2 && m.Caps.HasUSBCharging {
 				m.cycleUSBCharging()
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("performance")
 			}
 		case "d", "D":
 			if m.ActiveTab == 2 && m.Caps.HasBacklightTimeout {
 				m.toggleBattery("backlight_timeout")
 			} else if m.ActiveTab == 3 && m.Caps.HasFourZonedKB {
 				m.updateKBParam(3, 2)
+			} else if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
+				hardware.SetPlatformProfile("turbo")
 			}
 		case "e", "E":
 			if m.ActiveTab == 2 && m.Caps.HasLCDOverride {
@@ -151,31 +159,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.toggleBattery("boot_animation_sound")
 			}
 
-		// Options controls (Tab 4: Thermal Profiles - 1, 2, 3, 4)
+		// Tab navigation controls (1, 2, 3, 4, 5)
 		case "1":
-			if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
-				hardware.SetPlatformProfile("quiet")
-			} else {
-				m.ActiveTab = 0
-			}
+			m.ActiveTab = 0
 		case "2":
-			if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
-				hardware.SetPlatformProfile("balanced")
-			} else {
-				m.ActiveTab = 1
-			}
+			m.ActiveTab = 1
 		case "3":
-			if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
-				hardware.SetPlatformProfile("performance")
-			} else {
-				m.ActiveTab = 2
-			}
+			m.ActiveTab = 2
 		case "4":
-			if m.ActiveTab == 4 && m.Caps.HasPlatformProfile {
-				hardware.SetPlatformProfile("turbo")
-			} else {
-				m.ActiveTab = 3
-			}
+			m.ActiveTab = 3
 		case "5":
 			m.ActiveTab = 4
 
