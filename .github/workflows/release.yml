@@ -1,34 +1,98 @@
-name: Release Binary
+name: Release
 
 on:
   push:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
+    name: Build & Publish Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
-      - name: Checkout Code
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
 
-      - name: Build Binary
+      - name: Get version
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Build binaries
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o linuwu-sense-tui-linux-amd64 .
-          tar -czvf linuwu-sense-tui-linux-amd64.tar.gz linuwu-sense-tui-linux-amd64
+          VERSION=${{ steps.version.outputs.VERSION }}
+          LDFLAGS="-s -w -X main.version=${VERSION}"
+
+          # Linux amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+            go build -ldflags="${LDFLAGS}" -o linuwu-sense-tui-linux-amd64 .
+          tar -czf linuwu-sense-tui-linux-amd64.tar.gz linuwu-sense-tui-linux-amd64
+
+          # Linux arm64 (Raspberry Pi 4 / Pinebook etc.)
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 \
+            go build -ldflags="${LDFLAGS}" -o linuwu-sense-tui-linux-arm64 .
+          tar -czf linuwu-sense-tui-linux-arm64.tar.gz linuwu-sense-tui-linux-arm64
+
+      - name: Generate checksums
+        run: |
+          sha256sum linuwu-sense-tui-linux-amd64.tar.gz \
+                    linuwu-sense-tui-linux-arm64.tar.gz \
+            > checksums.txt
+          cat checksums.txt
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: linuwu-sense-tui-linux-amd64.tar.gz
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: "linuwu-sense-tui ${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## 🐾 linuwu-sense-tui ${{ steps.version.outputs.VERSION }}
+
+            A TUI controller for Acer Predator & Nitro laptops using the [Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense) kernel module.
+
+            ### Install via Go (recommended)
+            ```bash
+            go install github.com/Himesh-Kundal/linuwu-sense-tui@${{ steps.version.outputs.VERSION }}
+            ```
+
+            ### Or download the binary directly
+            Pick the archive for your architecture below, extract and move to your `$PATH`:
+            ```bash
+            tar -xzf linuwu-sense-tui-linux-amd64.tar.gz
+            sudo mv linuwu-sense-tui-linux-amd64 /usr/local/bin/linuwu-sense-tui
+            ```
+
+            ### First run
+            ```bash
+            linuwu-sense-tui setup   # install kernel module
+            sudo linuwu-sense-tui    # launch TUI
+            ```
+
+            ### Keybindings
+            | Key | Action |
+            |-----|--------|
+            | `Tab` / `Shift+Tab` | Cycle tabs |
+            | `F1`–`F5` | Jump to tab |
+            | `↑` / `↓` | Navigate list |
+            | `Space` / `Enter` | Toggle / Apply |
+            | `←` / `→` (Fans) | Fan speed ±5% |
+            | `0` / `9` (Fans) | Auto / Max |
+            | `q` | Quit |
+
+            ---
+            See [README](https://github.com/Himesh-Kundal/linuwu-sense-tui#readme) for full documentation.
+          files: |
+            linuwu-sense-tui-linux-amd64.tar.gz
+            linuwu-sense-tui-linux-arm64.tar.gz
+            checksums.txt
+          generate_release_notes: false
