@@ -55,7 +55,7 @@ linuwu-sense-tui setup
 
 ## 🙏 Credits & Acknowledgements
 
-- **Kernel Module (`linuwu_sense`)**: Developed by **[0x7375646F](https://github.com/0x7375646F)** in the **[Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense)** project (reverse engineered from Acer PredatorSense app). The C kernel module source bundled inside `internal/driver/files/` is licensed under GPL-3.0 and originates directly from Linuwu-Sense.
+- **Kernel Module (`linuwu_sense`)**: Developed by **[0x7375646F](https://github.com/0x7375646F)** in the **[Linuwu-Sense](https://github.com/0x7375646F/Linuwu-Sense)** project (reverse engineered from Acer PredatorSense app). The C kernel module source embedded in `internal/driver/upstream` is licensed under GPL-3.0 and originates directly from Linuwu-Sense.
 - **Acer WMI Driver Basis**: Originally by Carlos Corbacho, E.M. Smith, and the Linux kernel platform driver team.
 - **TUI & CLI Utility**: Created by [Himesh Kundal](https://github.com/Himesh-Kundal) using [Charm](https://charm.sh) (Bubble Tea & Lip Gloss).
 
