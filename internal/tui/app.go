@@ -336,15 +336,34 @@ func (m *Model) stepKBParam(delta int) {
 }
 
 // writeKBState writes the in-memory KBState to the sysfs four_zone_mode file.
+// If mode is Static (0), it also writes to per_zone_mode, as some keyboards require per-zone setup for static colors.
 func (m *Model) writeKBState() error {
 	if !m.Caps.HasFourZonedKB {
 		return fmt.Errorf("four-zone KB not supported")
 	}
+
+	mode := m.KBState[0]
+	r, g, b := m.KBState[4], m.KBState[5], m.KBState[6]
+	brightness := m.KBState[2]
+
+	// Write to four_zone_mode
 	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
 	val := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d\n", m.KBState[0], m.KBState[1], m.KBState[2], m.KBState[3], m.KBState[4], m.KBState[5], m.KBState[6])
 	if err := sysfs.WriteString(p, val); err != nil {
-		return fmt.Errorf("write four_zone_mode %q: %w", val, err)
+		return fmt.Errorf("write four_zone_mode: %w", err)
 	}
+
+	// For Static mode, also sync per_zone_mode (all 4 zones to the same RGB)
+	if mode == 0 {
+		hexColor := fmt.Sprintf("%02x%02x%02x", r, g, b)
+		pzVal := fmt.Sprintf("%s,%s,%s,%s,%d\n", hexColor, hexColor, hexColor, hexColor, brightness)
+		pzPath := filepath.Join(m.Caps.KBPath, "per_zone_mode")
+		if err := sysfs.WriteString(pzPath, pzVal); err != nil {
+			// Don't fail the whole operation if per_zone fails, but log it
+			return fmt.Errorf("write per_zone_mode: %w", err)
+		}
+	}
+
 	return nil
 }
 
