@@ -357,6 +357,12 @@ func (m *Model) cycleRGBPreset(delta int) {
 	newIdx := (presetIdx + delta + len(rgbPresets)) % len(rgbPresets)
 	params[4], params[5], params[6] = rgbPresets[newIdx][0], rgbPresets[newIdx][1], rgbPresets[newIdx][2]
 
+	// Dynamic modes (Neon, Wave, Shifting, Zoom, Meteor, Twinkling) ignore custom RGB colors.
+	// Switch to Static mode (0) or Breathing (1) if in dynamic mode.
+	if params[0] > 1 {
+		params[0] = 0 // Static
+	}
+
 	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
 	sysfs.WriteString(p, newVal)
 }
