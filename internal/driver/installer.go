@@ -41,17 +41,26 @@ func Install() error {
 		return fmt.Errorf("failed to extract embedded driver files: %w", err)
 	}
 
-	cmd := exec.Command("sudo", "make", "install")
-	cmd.Dir = tmpDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+	fmt.Println("🛠️  Building linuwu_sense kernel module...")
+	buildCmd := exec.Command("make", "all")
+	buildCmd.Dir = tmpDir
+	buildCmd.Stdout = os.Stdout
+	buildCmd.Stderr = os.Stderr
+	if err := buildCmd.Run(); err != nil {
+		return fmt.Errorf("module build failed (make all): %w", err)
+	}
 
-	fmt.Println("⚡ Building and installing linuwu_sense kernel module...")
-	if err := cmd.Run(); err != nil {
+	fmt.Println("⚡ Installing linuwu_sense kernel module (requires sudo)...")
+	installCmd := exec.Command("sudo", "-E", "make", "install")
+	installCmd.Dir = tmpDir
+	installCmd.Stdout = os.Stdout
+	installCmd.Stderr = os.Stderr
+	installCmd.Stdin = os.Stdin
+
+	if err := installCmd.Run(); err != nil {
 		return fmt.Errorf("make install failed: %w", err)
 	}
 
-	fmt.Println("✓ Driver linuwu_sense successfully installed!")
+	fmt.Println("\n✓ Driver linuwu_sense successfully installed and loaded!")
 	return nil
 }
