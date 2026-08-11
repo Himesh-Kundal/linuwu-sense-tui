@@ -22,14 +22,14 @@ func ReadString(path string) (string, error) {
 }
 
 // WriteString writes a string value to a sysfs path.
-// Uses O_WRONLY so it works correctly with kernel sysfs/procfs virtual files.
+// Uses O_WRONLY only — O_TRUNC is not valid on kernel sysfs virtual files.
 func WriteString(path string, val string) error {
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+	f, err := os.OpenFile(path, os.O_WRONLY, 0)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	_, err = f.WriteString(val + "\n")
+	_, err = f.WriteString(val)
 	return err
 }
 

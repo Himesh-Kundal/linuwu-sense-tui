@@ -32,6 +32,7 @@ type Model struct {
 	Fans      views.FansModel
 	Width     int
 	Height    int
+	StatusMsg string // transient status / error shown at the bottom
 }
 
 func NewModel() Model {
@@ -257,21 +258,27 @@ func (m *Model) activateKeyboardPrev() {
 }
 
 func (m *Model) stepKBParam(delta int) {
+	var err error
 	switch m.Cursor {
 	case 0: // mode
-		m.updateKBParamStep(0, 8, delta)
+		err = m.updateKBParamStep(0, 8, delta)
 	case 1: // speed
-		m.updateKBParamStep(1, 10, delta)
+		err = m.updateKBParamStep(1, 10, delta)
 	case 2: // brightness
-		m.updateKBParamStep(2, 101, delta*25)
+		err = m.updateKBParamStep(2, 101, delta*25)
 	case 3: // direction
-		m.updateKBParamStep(3, 2, delta)
+		err = m.updateKBParamStep(3, 2, delta)
 	case 4: // Red
-		m.updateKBColorStep(4, delta*15)
+		err = m.updateKBColorStep(4, delta*15)
 	case 5: // Green
-		m.updateKBColorStep(5, delta*15)
+		err = m.updateKBColorStep(5, delta*15)
 	case 6: // Blue
-		m.updateKBColorStep(6, delta*15)
+		err = m.updateKBColorStep(6, delta*15)
+	}
+	if err != nil {
+		m.StatusMsg = "⚠ KB write error: " + err.Error()
+	} else {
+		m.StatusMsg = ""
 	}
 }
 
@@ -328,14 +335,14 @@ func (m *Model) cycleUSBCharging() {
 	sysfs.WriteInt(p, next)
 }
 
-func (m *Model) updateKBColorStep(channelIdx int, delta int) {
+func (m *Model) updateKBColorStep(channelIdx int, delta int) error {
 	if !m.Caps.HasFourZonedKB {
-		return
+		return fmt.Errorf("four-zone KB not supported")
 	}
 	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
 	val, err := sysfs.ReadString(p)
 	if err != nil {
-		return
+		return fmt.Errorf("read four_zone_mode: %w", err)
 	}
 	var params [7]int
 	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6])
@@ -359,17 +366,20 @@ func (m *Model) updateKBColorStep(channelIdx int, delta int) {
 	}
 
 	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
-	sysfs.WriteString(p, newVal)
+	if err := sysfs.WriteString(p, newVal); err != nil {
+		return fmt.Errorf("write four_zone_mode %q: %w", newVal, err)
+	}
+	return nil
 }
 
-func (m *Model) updateKBParamStep(idx int, max int, delta int) {
+func (m *Model) updateKBParamStep(idx int, max int, delta int) error {
 	if !m.Caps.HasFourZonedKB {
-		return
+		return fmt.Errorf("four-zone KB not supported")
 	}
 	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
 	val, err := sysfs.ReadString(p)
 	if err != nil {
-		return
+		return fmt.Errorf("read four_zone_mode: %w", err)
 	}
 	var params [7]int
 	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6])
@@ -399,7 +409,10 @@ func (m *Model) updateKBParamStep(idx int, max int, delta int) {
 	}
 
 	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
-	sysfs.WriteString(p, newVal)
+	if err := sysfs.WriteString(p, newVal); err != nil {
+		return fmt.Errorf("write four_zone_mode %q: %w", newVal, err)
+	}
+	return nil
 }
 
 func clamp(val, min, max int) int {
@@ -464,16 +477,13 @@ func (m Model) View() string {
 	hints := footerHints(m.ActiveTab)
 	footer := style.StyleFooter.Render(hints)
 
-	return lipgloss.JoinVertical(lipgloss.Left,
-		header,
-		divider,
-		tabBar,
-		divider,
-		"",
-		body,
-		"",
-		footer,
-	)
+	rows := []string{header, divider, tabBar, divider, "", body, ""}
+	if m.StatusMsg != "" {
+		rows = append(rows, lipgloss.NewStyle().Foreground(style.ColorRed).Bold(true).Render("  "+m.StatusMsg))
+	}
+	rows = append(rows, footer)
+
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func footerHints(tab int) string {
