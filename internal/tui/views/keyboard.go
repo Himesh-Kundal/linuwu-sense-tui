@@ -48,13 +48,17 @@ func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 	colorSwatch := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color(colorHex)).
-		Render(fmt.Sprintf("█████ RGB (%d, %d, %d)", r, g, b))
+		Render(fmt.Sprintf("████████  RGB(%d, %d, %d)", r, g, b))
+
+	redBar := colorBar(r, 255, 14, style.ColorRed)
+	greenBar := colorBar(g, 255, 14, style.ColorGreen)
+	blueBar := colorBar(b, 255, 14, style.ColorPrimary)
 
 	rows := []kbRow{
 		{
 			label: "Effect Mode",
 			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorPurple).Render(fmt.Sprintf("%-12s", modeName)),
-			desc:  "Press Enter or ←/→ to cycle through 8 lighting modes",
+			desc:  "Press Enter or ←/→ to cycle lighting modes (Static, Breathing, Neon, Wave, etc.)",
 		},
 		{
 			label: "Speed",
@@ -63,7 +67,7 @@ func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 		},
 		{
 			label: "Brightness",
-			value: MiniBar(brightness, 100, 16) + " " + lipgloss.NewStyle().Foreground(style.ColorYellow).Render(fmt.Sprintf("%d%%", brightness)),
+			value: MiniBar(brightness, 100, 14) + " " + lipgloss.NewStyle().Foreground(style.ColorYellow).Render(fmt.Sprintf("%d%%", brightness)),
 			desc:  "Press Enter or ←/→ to adjust brightness (0-100%)",
 		},
 		{
@@ -72,9 +76,19 @@ func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 			desc:  "Press Enter or ←/→ to toggle animation direction",
 		},
 		{
-			label: "Color Preset",
-			value: colorSwatch,
-			desc:  "Press Enter or ←/→ to cycle color presets (Red, Green, Blue, etc.)",
+			label: "Red Channel",
+			value: redBar + " " + lipgloss.NewStyle().Foreground(style.ColorRed).Render(fmt.Sprintf("%d", r)),
+			desc:  "Press Enter or ←/→ to adjust Red intensity (0-255)",
+		},
+		{
+			label: "Green Channel",
+			value: greenBar + " " + lipgloss.NewStyle().Foreground(style.ColorGreen).Render(fmt.Sprintf("%d", g)),
+			desc:  "Press Enter or ←/→ to adjust Green intensity (0-255)",
+		},
+		{
+			label: "Blue Channel",
+			value: blueBar + " " + lipgloss.NewStyle().Foreground(style.ColorPrimary).Render(fmt.Sprintf("%d", b)),
+			desc:  "Press Enter or ←/→ to adjust Blue intensity (0-255)",
 		},
 	}
 
@@ -91,10 +105,27 @@ func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 		lines = append(lines, "")
 	}
 
+	// Live combined preview
+	lines = append(lines, "  Active Color: "+colorSwatch)
+
 	panel := style.SectionFocused("  4-Zone RGB Keyboard", strings.Join(lines, "\n"))
 	help := style.KeyHint("↑/↓", "Navigate") + "   " + style.KeyHint("←/→ or Enter", "Adjust value")
 
 	return lipgloss.JoinVertical(lipgloss.Left, panel, "", help)
+}
+
+func colorBar(val, max, width int, color lipgloss.Color) string {
+	if val < 0 {
+		val = 0
+	}
+	if val > max {
+		val = max
+	}
+	fill := (val * width) / max
+	empty := width - fill
+	filled := lipgloss.NewStyle().Foreground(color).Render(strings.Repeat("█", fill))
+	rest := lipgloss.NewStyle().Foreground(style.ColorMuted).Render(strings.Repeat("░", empty))
+	return filled + rest
 }
 
 func stripStyle(s string) string {

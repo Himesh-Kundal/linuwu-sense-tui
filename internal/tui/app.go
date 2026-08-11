@@ -156,7 +156,7 @@ func (m *Model) maxCursor() int {
 	case 2: // Power
 		return m.countPowerItems()
 	case 3: // Keyboard
-		return 5 // mode, speed, brightness, direction, color preset
+		return 7 // mode, speed, brightness, direction, Red, Green, Blue
 	case 4: // Profiles
 		choices, err := hardware.GetPlatformProfileChoices()
 		if err != nil || len(choices) == 0 {
@@ -266,8 +266,12 @@ func (m *Model) stepKBParam(delta int) {
 		m.updateKBParamStep(2, 101, delta*25)
 	case 3: // direction
 		m.updateKBParamStep(3, 2, delta)
-	case 4: // RGB Color Presets
-		m.cycleRGBPreset(delta)
+	case 4: // Red
+		m.updateKBColorStep(4, delta*15)
+	case 5: // Green
+		m.updateKBColorStep(5, delta*15)
+	case 6: // Blue
+		m.updateKBColorStep(6, delta*15)
 	}
 }
 
@@ -324,17 +328,7 @@ func (m *Model) cycleUSBCharging() {
 	sysfs.WriteInt(p, next)
 }
 
-var rgbPresets = [][3]int{
-	{255, 0, 0},     // Red
-	{0, 255, 0},     // Green
-	{0, 0, 255},     // Blue
-	{0, 255, 255},   // Cyan
-	{255, 0, 255},   // Magenta
-	{255, 255, 0},   // Yellow
-	{255, 255, 255}, // White
-}
-
-func (m *Model) cycleRGBPreset(delta int) {
+func (m *Model) updateKBColorStep(channelIdx int, delta int) {
 	if !m.Caps.HasFourZonedKB {
 		return
 	}
@@ -346,21 +340,22 @@ func (m *Model) cycleRGBPreset(delta int) {
 	var params [7]int
 	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6])
 
-	currentRGB := [3]int{params[4], params[5], params[6]}
-	presetIdx := 0
-	for i, p := range rgbPresets {
-		if p == currentRGB {
-			presetIdx = i
-			break
-		}
-	}
-	newIdx := (presetIdx + delta + len(rgbPresets)) % len(rgbPresets)
-	params[4], params[5], params[6] = rgbPresets[newIdx][0], rgbPresets[newIdx][1], rgbPresets[newIdx][2]
-
-	// Dynamic modes (Neon, Wave, Shifting, Zoom, Meteor, Twinkling) ignore custom RGB colors.
-	// Switch to Static mode (0) or Breathing (1) if in dynamic mode.
+	// Force mode = Static (0) if dynamic mode was selected
 	if params[0] > 1 {
-		params[0] = 0 // Static
+		params[0] = 0
+	}
+
+	next := params[channelIdx] + delta
+	if next > 255 {
+		next = 0
+	} else if next < 0 {
+		next = 255
+	}
+	params[channelIdx] = next
+
+	// Ensure direction is valid (1 or 2) for kernel requirement
+	if params[3] <= 0 {
+		params[3] = 1
 	}
 
 	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
@@ -396,6 +391,11 @@ func (m *Model) updateKBParamStep(idx int, max int, delta int) {
 	} else {
 		next := (params[idx] + delta + max) % max
 		params[idx] = next
+	}
+
+	// Fix kernel driver requirement: Wave (3) and Shifting (4) MUST have direction > 0 (1 or 2)
+	if params[3] <= 0 || params[3] > 2 {
+		params[3] = 1
 	}
 
 	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
