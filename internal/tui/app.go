@@ -386,12 +386,16 @@ func (m *Model) updateKBParamStep(idx int, max int, delta int) {
 			params[3] = 1
 		}
 	} else if idx == 2 {
-		params[2] = (params[2] + 25) % 125
-		if params[2] > 100 {
-			params[2] = 0
+		next := params[2] + delta
+		if next > 100 {
+			next = 0
+		} else if next < 0 {
+			next = 100
 		}
+		params[2] = next
 	} else {
-		params[idx] = (params[idx] + 1) % max
+		next := (params[idx] + delta + max) % max
+		params[idx] = next
 	}
 
 	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
