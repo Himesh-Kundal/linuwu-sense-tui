@@ -3,6 +3,7 @@ package hardware
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -128,5 +129,13 @@ func GetPlatformProfileChoices() ([]string, error) {
 }
 
 func SetPlatformProfile(profile string) error {
-	return sysfs.WriteString("/sys/firmware/acpi/platform_profile", profile)
+	path := "/sys/firmware/acpi/platform_profile"
+	err := sysfs.WriteString(path, profile)
+	if err != nil {
+		// Fallback for unprivileged process: attempt to write via sudo tee
+		cmd := exec.Command("sudo", "tee", path)
+		cmd.Stdin = strings.NewReader(profile + "\n")
+		return cmd.Run()
+	}
+	return nil
 }
