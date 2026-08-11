@@ -316,6 +316,13 @@ func (m *Model) stepKBParam(delta int) {
 		m.KBState[6] = next
 	}
 
+	// Force mode = Static (0) if any color channel was modified
+	if m.Cursor >= 4 && m.Cursor <= 6 {
+		if m.KBState[0] > 1 { // If dynamic mode, switch to Static to show colors
+			m.KBState[0] = 0
+		}
+	}
+
 	// Ensure direction is always valid
 	if m.KBState[3] <= 0 || m.KBState[3] > 2 {
 		m.KBState[3] = 1
