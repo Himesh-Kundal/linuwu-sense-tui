@@ -44,26 +44,37 @@ func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 		dirStr = "Right→Left"
 	}
 
+	colorHex := fmt.Sprintf("#%02x%02x%02x", r, g, b)
+	colorSwatch := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color(colorHex)).
+		Render(fmt.Sprintf("█████ RGB (%d, %d, %d)", r, g, b))
+
 	rows := []kbRow{
 		{
 			label: "Effect Mode",
 			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorPurple).Render(fmt.Sprintf("%-12s", modeName)),
-			desc:  "Press Enter to cycle through 8 lighting modes",
+			desc:  "Press Enter or ←/→ to cycle through 8 lighting modes",
 		},
 		{
 			label: "Speed",
 			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorCyan).Render(fmt.Sprintf("%d / 9", speed)),
-			desc:  "Press Enter to increase animation speed (0-9)",
+			desc:  "Press Enter or ←/→ to adjust animation speed (0-9)",
 		},
 		{
 			label: "Brightness",
 			value: MiniBar(brightness, 100, 16) + " " + lipgloss.NewStyle().Foreground(style.ColorYellow).Render(fmt.Sprintf("%d%%", brightness)),
-			desc:  "Press Enter to cycle brightness (+25%)",
+			desc:  "Press Enter or ←/→ to adjust brightness (0-100%)",
 		},
 		{
 			label: "Direction",
 			value: lipgloss.NewStyle().Bold(true).Foreground(style.ColorGreen).Render(dirStr),
-			desc:  "Press Enter to toggle animation direction",
+			desc:  "Press Enter or ←/→ to toggle animation direction",
+		},
+		{
+			label: "Color Preset",
+			value: colorSwatch,
+			desc:  "Press Enter or ←/→ to cycle color presets (Red, Green, Blue, etc.)",
 		},
 	}
 
@@ -80,22 +91,12 @@ func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
 		lines = append(lines, "")
 	}
 
-	// Color preview row
-	colorSwatch := lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.Color(fmt.Sprintf("#%02x%02x%02x", r, g, b))).
-		Render(fmt.Sprintf("  █████  RGB (%d, %d, %d)", r, g, b))
-	lines = append(lines, colorSwatch)
-
 	panel := style.SectionFocused("  4-Zone RGB Keyboard", strings.Join(lines, "\n"))
-	help := style.KeyHint("↑/↓", "Navigate") + "   " + style.KeyHint("Enter/Space", "Cycle value")
+	help := style.KeyHint("↑/↓", "Navigate") + "   " + style.KeyHint("←/→ or Enter", "Adjust value")
 
 	return lipgloss.JoinVertical(lipgloss.Left, panel, "", help)
 }
 
-// stripStyle removes ANSI color sequences for safe use in background-colored rows.
-// For simplicity we just re-render a plain version.
 func stripStyle(s string) string {
-	// lipgloss strips styles itself when rendering inside another styled block.
 	return s
 }

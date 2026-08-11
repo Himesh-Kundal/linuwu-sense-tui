@@ -112,28 +112,31 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ", "enter":
 			m.activate()
 
-		// ── Fan-specific shortcuts (only meaningful on Fans tab)
+		// ── Tab-specific left/right & number shortcuts
 		case "left", "h":
 			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
 				m.Fans.CPUSpeed = clamp(m.Fans.CPUSpeed-5, 0, 100)
 				m.Fans.GPUSpeed = clamp(m.Fans.GPUSpeed-5, 0, 100)
 				hardware.SetFanSpeed(m.Caps, m.Fans.CPUSpeed, m.Fans.GPUSpeed)
+			} else if m.ActiveTab == 3 {
+				m.activateKeyboardPrev()
 			}
 		case "right", "l":
 			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
 				m.Fans.CPUSpeed = clamp(m.Fans.CPUSpeed+5, 0, 100)
 				m.Fans.GPUSpeed = clamp(m.Fans.GPUSpeed+5, 0, 100)
 				hardware.SetFanSpeed(m.Caps, m.Fans.CPUSpeed, m.Fans.GPUSpeed)
+			} else if m.ActiveTab == 3 {
+				m.activateKeyboardNext()
 			}
-		case "0":
+		case "0", "1", "2", "3", "4", "5", "6", "7", "8", "9":
 			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
-				m.Fans.CPUSpeed, m.Fans.GPUSpeed = 0, 0
-				hardware.SetFanSpeed(m.Caps, 0, 0)
-			}
-		case "9":
-			if m.ActiveTab == 1 && m.Caps.HasFanSpeed {
-				m.Fans.CPUSpeed, m.Fans.GPUSpeed = 100, 100
-				hardware.SetFanSpeed(m.Caps, 100, 100)
+				val := (int(msg.String()[0] - '0')) * 10
+				if msg.String() == "9" {
+					val = 100
+				}
+				m.Fans.CPUSpeed, m.Fans.GPUSpeed = val, val
+				hardware.SetFanSpeed(m.Caps, val, val)
 			}
 		}
 	}
@@ -153,7 +156,7 @@ func (m *Model) maxCursor() int {
 	case 2: // Power
 		return m.countPowerItems()
 	case 3: // Keyboard
-		return 4 // mode, speed, brightness, direction
+		return 5 // mode, speed, brightness, direction, color preset
 	case 4: // Profiles
 		choices, err := hardware.GetPlatformProfileChoices()
 		if err != nil || len(choices) == 0 {
@@ -242,15 +245,29 @@ func (m *Model) activatePower() {
 }
 
 func (m *Model) activateKeyboard() {
+	m.stepKBParam(1)
+}
+
+func (m *Model) activateKeyboardNext() {
+	m.stepKBParam(1)
+}
+
+func (m *Model) activateKeyboardPrev() {
+	m.stepKBParam(-1)
+}
+
+func (m *Model) stepKBParam(delta int) {
 	switch m.Cursor {
 	case 0: // mode
-		m.updateKBParam(0, 8)
+		m.updateKBParamStep(0, 8, delta)
 	case 1: // speed
-		m.updateKBParam(1, 10)
+		m.updateKBParamStep(1, 10, delta)
 	case 2: // brightness
-		m.updateKBParam(2, 101)
+		m.updateKBParamStep(2, 101, delta*25)
 	case 3: // direction
-		m.updateKBParam(3, 2)
+		m.updateKBParamStep(3, 2, delta)
+	case 4: // RGB Color Presets
+		m.cycleRGBPreset(delta)
 	}
 }
 
@@ -307,7 +324,44 @@ func (m *Model) cycleUSBCharging() {
 	sysfs.WriteInt(p, next)
 }
 
-func (m *Model) updateKBParam(idx int, max int) {
+var rgbPresets = [][3]int{
+	{255, 0, 0},     // Red
+	{0, 255, 0},     // Green
+	{0, 0, 255},     // Blue
+	{0, 255, 255},   // Cyan
+	{255, 0, 255},   // Magenta
+	{255, 255, 0},   // Yellow
+	{255, 255, 255}, // White
+}
+
+func (m *Model) cycleRGBPreset(delta int) {
+	if !m.Caps.HasFourZonedKB {
+		return
+	}
+	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
+	val, err := sysfs.ReadString(p)
+	if err != nil {
+		return
+	}
+	var params [7]int
+	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6])
+
+	currentRGB := [3]int{params[4], params[5], params[6]}
+	presetIdx := 0
+	for i, p := range rgbPresets {
+		if p == currentRGB {
+			presetIdx = i
+			break
+		}
+	}
+	newIdx := (presetIdx + delta + len(rgbPresets)) % len(rgbPresets)
+	params[4], params[5], params[6] = rgbPresets[newIdx][0], rgbPresets[newIdx][1], rgbPresets[newIdx][2]
+
+	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
+	sysfs.WriteString(p, newVal)
+}
+
+func (m *Model) updateKBParamStep(idx int, max int, delta int) {
 	if !m.Caps.HasFourZonedKB {
 		return
 	}
