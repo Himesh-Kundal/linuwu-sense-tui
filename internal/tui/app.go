@@ -33,6 +33,7 @@ type Model struct {
 	Width     int
 	Height    int
 	StatusMsg string // transient status / error shown at the bottom
+	KBState   [7]int // [mode, speed, brightness, direction, red, green, blue] — tracked in-memory
 }
 
 func NewModel() Model {
@@ -40,13 +41,25 @@ func NewModel() Model {
 	sensors := hardware.ReadSensors(caps)
 	var fans views.FansModel
 	fans.Init(caps)
-	return Model{
+	m := Model{
 		ActiveTab: 0,
 		Cursor:    0,
 		Caps:      caps,
 		Sensors:   sensors,
 		Fans:      fans,
 	}
+	// Seed keyboard state from sysfs (one-time read; readback is unreliable)
+	if caps.HasFourZonedKB {
+		p := filepath.Join(caps.KBPath, "four_zone_mode")
+		if raw, err := sysfs.ReadString(p); err == nil {
+			fmt.Sscanf(raw, "%d,%d,%d,%d,%d,%d,%d", &m.KBState[0], &m.KBState[1], &m.KBState[2], &m.KBState[3], &m.KBState[4], &m.KBState[5], &m.KBState[6])
+		}
+		// Ensure direction is valid
+		if m.KBState[3] <= 0 {
+			m.KBState[3] = 1
+		}
+	}
+	return m
 }
 
 func (m Model) Init() tea.Cmd {
@@ -258,28 +271,74 @@ func (m *Model) activateKeyboardPrev() {
 }
 
 func (m *Model) stepKBParam(delta int) {
-	var err error
 	switch m.Cursor {
-	case 0: // mode
-		err = m.updateKBParamStep(0, 8, delta)
-	case 1: // speed
-		err = m.updateKBParamStep(1, 10, delta)
-	case 2: // brightness
-		err = m.updateKBParamStep(2, 101, delta*25)
-	case 3: // direction
-		err = m.updateKBParamStep(3, 2, delta)
-	case 4: // Red
-		err = m.updateKBColorStep(4, delta*15)
-	case 5: // Green
-		err = m.updateKBColorStep(5, delta*15)
-	case 6: // Blue
-		err = m.updateKBColorStep(6, delta*15)
+	case 0: // mode (0-7)
+		m.KBState[0] = (m.KBState[0] + delta + 8) % 8
+	case 1: // speed (0-9)
+		m.KBState[1] = (m.KBState[1] + delta + 10) % 10
+	case 2: // brightness (0-100 in steps of 25)
+		next := m.KBState[2] + delta*25
+		if next > 100 {
+			next = 0
+		} else if next < 0 {
+			next = 100
+		}
+		m.KBState[2] = next
+	case 3: // direction (toggle 1 <-> 2)
+		if m.KBState[3] == 1 {
+			m.KBState[3] = 2
+		} else {
+			m.KBState[3] = 1
+		}
+	case 4: // Red (0-255)
+		next := m.KBState[4] + delta*15
+		if next > 255 {
+			next = 0
+		} else if next < 0 {
+			next = 255
+		}
+		m.KBState[4] = next
+	case 5: // Green (0-255)
+		next := m.KBState[5] + delta*15
+		if next > 255 {
+			next = 0
+		} else if next < 0 {
+			next = 255
+		}
+		m.KBState[5] = next
+	case 6: // Blue (0-255)
+		next := m.KBState[6] + delta*15
+		if next > 255 {
+			next = 0
+		} else if next < 0 {
+			next = 255
+		}
+		m.KBState[6] = next
 	}
-	if err != nil {
+
+	// Ensure direction is always valid
+	if m.KBState[3] <= 0 || m.KBState[3] > 2 {
+		m.KBState[3] = 1
+	}
+
+	if err := m.writeKBState(); err != nil {
 		m.StatusMsg = "⚠ KB write error: " + err.Error()
 	} else {
 		m.StatusMsg = ""
 	}
+}
+
+// writeKBState writes the in-memory KBState to the sysfs four_zone_mode file.
+func (m *Model) writeKBState() error {
+	if !m.Caps.HasFourZonedKB {
+		return fmt.Errorf("four-zone KB not supported")
+	}
+	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
+	val := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d\n", m.KBState[0], m.KBState[1], m.KBState[2], m.KBState[3], m.KBState[4], m.KBState[5], m.KBState[6])
+	if err := sysfs.WriteString(p, val); err != nil {
+		return fmt.Errorf("write four_zone_mode %q: %w", val, err)
+	}
+	return nil
 }
 
 // handleMouse maps a click to an action.
@@ -335,86 +394,6 @@ func (m *Model) cycleUSBCharging() {
 	sysfs.WriteInt(p, next)
 }
 
-func (m *Model) updateKBColorStep(channelIdx int, delta int) error {
-	if !m.Caps.HasFourZonedKB {
-		return fmt.Errorf("four-zone KB not supported")
-	}
-	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
-	val, err := sysfs.ReadString(p)
-	if err != nil {
-		return fmt.Errorf("read four_zone_mode: %w", err)
-	}
-	var params [7]int
-	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6])
-
-	// Force mode = Static (0) if dynamic mode was selected
-	if params[0] > 1 {
-		params[0] = 0
-	}
-
-	next := params[channelIdx] + delta
-	if next > 255 {
-		next = 0
-	} else if next < 0 {
-		next = 255
-	}
-	params[channelIdx] = next
-
-	// Ensure direction is valid (1 or 2) for kernel requirement
-	if params[3] <= 0 {
-		params[3] = 1
-	}
-
-	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
-	if err := sysfs.WriteString(p, newVal); err != nil {
-		return fmt.Errorf("write four_zone_mode %q: %w", newVal, err)
-	}
-	return nil
-}
-
-func (m *Model) updateKBParamStep(idx int, max int, delta int) error {
-	if !m.Caps.HasFourZonedKB {
-		return fmt.Errorf("four-zone KB not supported")
-	}
-	p := filepath.Join(m.Caps.KBPath, "four_zone_mode")
-	val, err := sysfs.ReadString(p)
-	if err != nil {
-		return fmt.Errorf("read four_zone_mode: %w", err)
-	}
-	var params [7]int
-	fmt.Sscanf(val, "%d,%d,%d,%d,%d,%d,%d", &params[0], &params[1], &params[2], &params[3], &params[4], &params[5], &params[6])
-
-	if idx == 3 {
-		if params[3] == 1 {
-			params[3] = 2
-		} else {
-			params[3] = 1
-		}
-	} else if idx == 2 {
-		next := params[2] + delta
-		if next > 100 {
-			next = 0
-		} else if next < 0 {
-			next = 100
-		}
-		params[2] = next
-	} else {
-		next := (params[idx] + delta + max) % max
-		params[idx] = next
-	}
-
-	// Fix kernel driver requirement: Wave (3) and Shifting (4) MUST have direction > 0 (1 or 2)
-	if params[3] <= 0 || params[3] > 2 {
-		params[3] = 1
-	}
-
-	newVal := fmt.Sprintf("%d,%d,%d,%d,%d,%d,%d", params[0], params[1], params[2], params[3], params[4], params[5], params[6])
-	if err := sysfs.WriteString(p, newVal); err != nil {
-		return fmt.Errorf("write four_zone_mode %q: %w", newVal, err)
-	}
-	return nil
-}
-
 func clamp(val, min, max int) int {
 	if val < min {
 		return min
@@ -468,7 +447,7 @@ func (m Model) View() string {
 	case 2:
 		body = views.RenderPower(m.Caps, m.Cursor)
 	case 3:
-		body = views.RenderKeyboard(m.Caps, m.Cursor)
+		body = views.RenderKeyboard(m.Caps, m.Cursor, m.KBState)
 	case 4:
 		body = views.RenderProfile(m.Caps, m.Cursor)
 	}

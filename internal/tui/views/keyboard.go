@@ -2,11 +2,9 @@ package views
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/hardware"
-	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/sysfs"
 	"github.com/Himesh-Kundal/linuwu-sense-tui/internal/tui/style"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -21,19 +19,14 @@ type kbRow struct {
 	desc  string
 }
 
-func RenderKeyboard(caps hardware.Capabilities, cursor int) string {
+func RenderKeyboard(caps hardware.Capabilities, cursor int, kbState [7]int) string {
 	if !caps.HasFourZonedKB {
 		return style.StyleWarning.Render("  Four-Zone RGB keyboard is not supported on this device.")
 	}
 
-	modePath := filepath.Join(caps.KBPath, "four_zone_mode")
-	raw, err := sysfs.ReadString(modePath)
-	if err != nil {
-		raw = "0,0,0,1,0,0,0"
-	}
+	mode, speed, brightness, direction := kbState[0], kbState[1], kbState[2], kbState[3]
+	r, g, b := kbState[4], kbState[5], kbState[6]
 
-	var mode, speed, brightness, direction, r, g, b int
-	fmt.Sscanf(raw, "%d,%d,%d,%d,%d,%d,%d", &mode, &speed, &brightness, &direction, &r, &g, &b)
 
 	modeName := "Unknown"
 	if mode >= 0 && mode < len(modeNames) {
